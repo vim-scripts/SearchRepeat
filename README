@@ -1,0 +1,64 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=4949
+
+DESCRIPTION
+Jumping to the next / previous search match is such a common command in Vim
+that the n / N keys quickly become deeply ingrained in muscle memory. So
+when one has defined a custom search (e.g. aided by the SearchSpecial.vim
+(vimscript #4948) plugin), one is tempted to use n / N to repeat those,
+too, but the keys will just continue to perform the default search. An
+intelligent overloading of n / N is also desirable because these
+single-key commands allow for quick single-stroke repeat, and there aren't
+many other keys left for mapping custom searches to.
+
+This plugin overloads the n and N commands so that custom searches (i.e.
+anything except the default search via /, ?, [g]*, [g]#) can be repeated.
+Activation of a custom search makes that search the new type of search to be
+repeated, until the search type is changed again. The default search is
+included in that via the `/` and ? commands, too.
+
+SEE ALSO
+- The SearchSpecial.vim (vimscript #4948) plugin provides generic functions
+  for special search modes. Check out its plugin page for a full list of
+  custom searches powered by it.
+
+USAGE
+n / N               Repeat the last used type of search.
+
+gn                      List all registered search types, keys to
+                        (re-)activate, and optional related search commands
+                        that activate or configure that type.
+                        The currently active search type is highlighted.
+
+Some custom searches provide dedicated :Search... commands that also activate
+the search repeat. Apart from that, you usually select and execute a custom
+search type via its gn... integration mapping.
+To change the search type back to plain normal search (without changing the
+search pattern), just type '/<Enter>'.
+
+EXAMPLE
+Let's define a simple custom search that positions the current search result
+in the middle of the window (using zz). These mappings just delegate to the
+default n command, open a fold (zv, because that's not done automatically
+from a mapping), and then append the zz command:
+    nnoremap <silent> <Plug>(SearchAtCenterOfWindowNext) :<C-u>execute 'normal!' v:count1 . 'nzvzz'<CR>
+    nnoremap <silent> <Plug>(SearchAtCenterOfWindowPrev) :<C-u>execute 'normal!' v:count1 . 'Nzvzz'<CR>
+
+Then, integrate these into SearchRepeat, using gnzz and gnzZ to activate them:
+    call SearchRepeat#Define(
+    \   "\<Plug>(SearchAtCenterOfWindowNext)", '', 'zz', '/win-center/', 'Search forward,  position at center of window', '',
+    \   "\<Plug>(SearchAtCenterOfWindowPrev)", '', 'zZ', '?win-center?', 'Search backward, position at center of window', '',
+    \   2
+    \)
+
+The gn command will now show the (two forward / backward variants of the)
+newly added custom search in addition to the built-in standard search:
+activation      description     helptext
+        /       Standard search forward
+        ?       Standard search backward
+gnzz            win-center      Search forward,  position at center of window
+gnzZ            win-center      Search backward, position at center of window
+
+To activate, search for /something, then press gnzz. From now on, the n /
+N commands will also center the match (and the gnzz search type is
+highlighted in the gn list), until you reset the search type with another
+/search.

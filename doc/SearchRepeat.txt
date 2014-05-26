@@ -1,0 +1,174 @@
+*SearchRepeat.txt*      Repeat the last type of search via n/N.
+
+		       SEARCH REPEAT    by Ingo Karkat
+							    *SearchRepeat.vim*
+description			|SearchRepeat-description|
+usage				|SearchRepeat-usage|
+installation			|SearchRepeat-installation|
+configuration			|SearchRepeat-configuration|
+integration			|SearchRepeat-integration|
+limitations			|SearchRepeat-limitations|
+known problems			|SearchRepeat-known-problems|
+todo				|SearchRepeat-todo|
+history				|SearchRepeat-history|
+
+==============================================================================
+DESCRIPTION					    *SearchRepeat-description*
+
+Jumping to the next / previous search match is such a common command in Vim
+that the |n| / |N| keys quickly become deeply ingrained in muscle memory. So
+when one has defined a custom search (e.g. aided by the |SearchSpecial.vim|
+(vimscript #4948) plugin), one is tempted to use |n| / |N| to repeat those,
+too, but the keys will just continue to perform the default search. An
+intelligent overloading of |n| / |N| is also desirable because these
+single-key commands allow for quick single-stroke repeat, and there aren't
+many other keys left for mapping custom searches to.
+
+This plugin overloads the |n| and |N| commands so that custom searches (i.e.
+anything except the default search via /, ?, [g]*, [g]#) can be repeated.
+Activation of a custom search makes that search the new type of search to be
+repeated, until the search type is changed again. The default search is
+included in that via the `/` and |?| commands, too.
+
+SEE ALSO								     *
+
+- The |SearchSpecial.vim| (vimscript #4948) plugin provides generic functions
+  for special search modes. Check out its plugin page for a full list of
+  custom searches powered by it.
+
+==============================================================================
+USAGE							  *SearchRepeat-usage*
+
+|n| / |N|		Repeat the last used type of search.
+									  *gn*
+gn			List all registered search types, keys to
+			(re-)activate, and optional related search commands
+			that activate or configure that type.
+			The currently active search type is highlighted.
+
+Some custom searches provide dedicated :Search... commands that also activate
+the search repeat. Apart from that, you usually select and execute a custom
+search type via its gn... integration mapping.
+To change the search type back to plain normal search (without changing the
+search pattern), just type '/<Enter>'.
+
+EXAMPLE							*SearchRepeat-example*
+
+Let's define a simple custom search that positions the current search result
+in the middle of the window (using |zz|). These mappings just delegate to the
+default |n| command, open a fold (|zv|, because that's not done automatically
+from a mapping), and then append the |zz| command: >
+    nnoremap <silent> <Plug>(SearchAtCenterOfWindowNext) :<C-u>execute 'normal!' v:count1 . 'nzvzz'<CR>
+    nnoremap <silent> <Plug>(SearchAtCenterOfWindowPrev) :<C-u>execute 'normal!' v:count1 . 'Nzvzz'<CR>
+<
+Then, integrate these into SearchRepeat, using gnzz and gnzZ to activate them: >
+    call SearchRepeat#Define(
+    \   "\<Plug>(SearchAtCenterOfWindowNext)", '', 'zz', '/win-center/', 'Search forward,  position at center of window', '',
+    \   "\<Plug>(SearchAtCenterOfWindowPrev)", '', 'zZ', '?win-center?', 'Search backward, position at center of window', '',
+    \   2
+    \)
+<
+The |gn| command will now show the (two forward / backward variants of the)
+newly added custom search in addition to the built-in standard search:
+activation	description	helptext ~
+	/	Standard search forward ~
+	?	Standard search backward ~
+gnzz		win-center	Search forward,  position at center of window ~
+gnzZ		win-center	Search backward, position at center of window ~
+
+To activate, search for /something, then press gnzz. From now on, the |n| /
+|N| commands will also center the match (and the gnzz search type is
+highlighted in the |gn| list), until you reset the search type with another
+/search.
+
+==============================================================================
+INSTALLATION					   *SearchRepeat-installation*
+
+This script is packaged as a |vimball|. If you have the "gunzip" decompressor
+in your PATH, simply edit the *.vmb.gz package in Vim; otherwise, decompress
+the archive first, e.g. using WinZip. Inside Vim, install by sourcing the
+vimball or via the |:UseVimball| command. >
+    vim SearchRepeat*.vmb.gz
+    :so %
+To uninstall, use the |:RmVimball| command.
+
+DEPENDENCIES					   *SearchRepeat-dependencies*
+
+- Requires Vim 7.0 or higher.
+- Requires the |ingo-library.vim| plugin (vimscript #4433), version 1.005 or
+  higher.
+
+==============================================================================
+CONFIGURATION					  *SearchRepeat-configuration*
+							  *SearchRepeat-remap*
+For a permanent configuration, put the following commands into your |vimrc|:
+						*g:SearchRepeat_MappingPrefix*
+To change the default mapping prefix, use: >
+    let g:SearchRepeat_MappingPrefix = 'gn'
+This will affect all SearchRepeat integrations done by custom searches, and by
+default also the |gn| list of all registered search types. To change the
+latter one separately, use: >
+    nmap <Leader>gn <Plug>(SearchRepeatHelp)
+<
+==============================================================================
+INTEGRATION					    *SearchRepeat-integration*
+
+To set the current search type (in a custom search mapping): >
+    :call SearchRepeat#Set("\<Plug>MyCustomSearchMapping", "\<Plug>MyCustomOppositeSearchMapping", n)
+<
+To set the current search type (in a custom search mapping) and execute the
+(first, not the opposite) search mapping: >
+    :call SearchRepeat#Execute("\<Plug>MyCustomSearchMapping", "\<Plug>MyCustomOppositeSearchMapping", n)
+<
+The third argument n specifies how the mappings deal with an optional [count]
+that is passed to the 'n' / 'N' commands:
+    0: Doesn't handle count, single invocation only. No count is prepended to
+       the search mapping, which is invoked only once. (But the count itself
+       is still available through v:count.)
+    1: Doesn't handle count itself, invoke search mapping multiple times.
+    2: Handles count itself, prepend count before search mapping.
+
+An optional fourth argument supplies additional configuration in a dictionary;
+these key names are supported:
+- "hlsearch" (type Boolean, default 1)
+   Flag whether to re-enable 'hlsearch' during repetition (which is not done
+   automatically because the repeated mapping is executed from within a
+   function, and not via feedkeys()). Set to 0 if your search mapping has
+   nothing to do with the built-in search functionality.
+- "keys"    (type String, default "")
+   Appends arbitrary (mapped) key sequences (via |feedkeys()|) after executing
+   the search mapping.
+
+But normally, you'd define the (optional) SearchRepeat integration via the
+single SearchRepeat#Define() convenience function, at the end of your custom
+search plugin: >
+    try
+	call SearchRepeat#Define(...)
+    catch /^Vim\%((\a\+)\)\=:E117/	" catch error E117: Unknown function
+    endtry
+<
+==============================================================================
+LIMITATIONS					    *SearchRepeat-limitations*
+
+KNOWN PROBLEMS					 *SearchRepeat-known-problems*
+
+TODO							   *SearchRepeat-todo*
+
+IDEAS							  *SearchRepeat-ideas*
+
+==============================================================================
+HISTORY							*SearchRepeat-history*
+
+1.00	26-May-2014
+First published version.
+
+0.01	27-Jun-2008
+Started development.
+
+==============================================================================
+Copyright: (C) 2008-2014 Ingo Karkat
+The VIM LICENSE applies to this plugin; see |copyright|.
+
+Maintainer:	Ingo Karkat <ingo@karkat.de>
+==============================================================================
+ vim:tw=78:ts=8:ft=help:norl:
