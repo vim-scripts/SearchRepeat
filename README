@@ -16,6 +16,10 @@ Activation of a custom search makes that search the new type of search to be
 repeated, until the search type is changed again. The default search is
 included in that via the `/` and ? commands, too.
 
+It can also make n always move forward and N always move backward (for
+both built-in and custom searches), regardless of the current search
+direction.
+
 SEE ALSO
 - The SearchSpecial.vim (vimscript #4948) plugin provides generic functions
   for special search modes. Check out its plugin page for a full list of
@@ -45,8 +49,8 @@ from a mapping), and then append the zz command:
 
 Then, integrate these into SearchRepeat, using gnzz and gnzZ to activate them:
     call SearchRepeat#Define(
-    \   "\<Plug>(SearchAtCenterOfWindowNext)", '', 'zz', '/win-center/', 'Search forward,  position at center of window', '',
-    \   "\<Plug>(SearchAtCenterOfWindowPrev)", '', 'zZ', '?win-center?', 'Search backward, position at center of window', '',
+    \   '<Plug>(SearchAtCenterOfWindowNext)', '', 'zz', '/win-center/', 'Search forward,  position at center of window', '',
+    \   '<Plug>(SearchAtCenterOfWindowPrev)', '', 'zZ', '?win-center?', 'Search backward, position at center of window', '',
     \   2
     \)
 

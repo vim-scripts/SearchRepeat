@@ -10,6 +10,17 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   1.10.014	27-May-2014	CHG: Add isOpposite flag to
+"				SearchRepeat#Execute() and remove the swapping
+"				of a:mappingNext and a:mappingPrev in the
+"				opposite mapping definition.
+"				Move SearchRepeat#RepeatSearch() to autoload
+"				script, and make it honor the
+"				g:SearchRepeat_IsAlwaysForwardWith_n
+"				configuration.
+"				FIX: SearchRepeat#Execute() needs to return
+"				status of SearchRepeat#Repeat() to have clients
+"				:echoerr any error.
 "   1.00.013	26-May-2014	Avoid "E716: Key not present in Dictionary"
 "				error when a search mapping hasn't been
 "				registered. Only issue a warning message when
@@ -89,6 +100,27 @@ endif
 
 "- functions -------------------------------------------------------------------
 
+" Note: When typed, [*#nN] open the fold at the search result, but inside a mapping or
+" :normal this must be done explicitly via 'zv'.
+" The tricky thing here is that folds must only be opened when the jump
+" succeeded. The 'n' command doesn't abort the mapping chain, so we have to
+" explicitly check for a successful jump in a custom function.
+function! SearchRepeat#RepeatSearch( isOpposite, ... )
+    let l:isReverse = (a:0 || g:SearchRepeat_IsAlwaysForwardWith_n ?
+    \   (v:searchforward && a:isOpposite || ! v:searchforward && ! a:isOpposite) :
+    \   a:isOpposite
+    \)
+
+    let l:save_errmsg = v:errmsg
+    let v:errmsg = ''
+    execute 'normal!' (v:count ? v:count : '') . (l:isReverse ? 'N' : 'n')
+    if empty(v:errmsg)
+	let v:errmsg = l:save_errmsg
+	execute 'normal! zv' . (a:0 ? a:1 : '')
+    endif
+endfunction
+
+
 let s:lastSearch = ["\<Plug>(SearchRepeat_n)", "\<Plug>(SearchRepeat_N)", 2, {}]
 let s:lastSearchDescription = ''
 
@@ -103,9 +135,13 @@ function! SearchRepeat#Set( mapping, oppositeMapping, howToHandleCount, ... )
 	endif
     endif
 endfunction
-function! SearchRepeat#Execute( mapping, oppositeMapping, howToHandleCount, ... )
-    call SearchRepeat#Set(a:mapping, a:oppositeMapping, a:howToHandleCount, (a:0 ? a:1 : {}))
-    call SearchRepeat#Repeat(0)
+function! SearchRepeat#Execute( isOpposite, mapping, oppositeMapping, howToHandleCount, ... )
+    if a:isOpposite && ! g:SearchRepeat_IsAlwaysForwardWith_n
+	call SearchRepeat#Set(a:oppositeMapping, a:mapping, a:howToHandleCount, (a:0 ? a:1 : {}))
+    else
+	call SearchRepeat#Set(a:mapping, a:oppositeMapping, a:howToHandleCount, (a:0 ? a:1 : {}))
+    endif
+    return SearchRepeat#Repeat(g:SearchRepeat_IsAlwaysForwardWith_n ? a:isOpposite : 0)
 endfunction
 function! SearchRepeat#Repeat( isOpposite )
     let l:searchCommand = s:lastSearch[ a:isOpposite ]
@@ -157,12 +193,12 @@ function! SearchRepeat#Repeat( isOpposite )
 endfunction
 
 
-
 "- integration point for search type ------------------------------------------
 
 function! SearchRepeat#LastSearchDescription()
     return s:lastSearchDescription
 endfunction
+
 
 "- registration and context help ----------------------------------------------
 
@@ -186,8 +222,8 @@ function! SearchRepeat#Define( mappingNext, mappingToActivateNext, suffixToReact
 \)
     execute printf('call SearchRepeat#Register("\%s", a:mappingToActivateNext, a:suffixToReactivateNext, a:descriptionNext, a:helptextNext, a:relatedCommandsNext)', a:mappingNext)
     execute printf('call SearchRepeat#Register("\%s", a:mappingToActivatePrev, a:suffixToReactivatePrev, a:descriptionPrev, a:helptextPrev, a:relatedCommandsPrev)', a:mappingPrev)
-    execute printf('nnoremap <silent> %s%s :<C-u>call SearchRepeat#Execute("\%s", "\%s", %s)<CR>', g:SearchRepeat_MappingPrefix, a:suffixToReactivateNext, a:mappingNext, a:mappingPrev, a:howToHandleCountAndOptions)
-    execute printf('nnoremap <silent> %s%s :<C-u>call SearchRepeat#Execute("\%s", "\%s", %s)<CR>', g:SearchRepeat_MappingPrefix, a:suffixToReactivatePrev, a:mappingPrev, a:mappingNext, a:howToHandleCountAndOptions)
+    execute printf('nnoremap <silent> %s%s :<C-u>if ! SearchRepeat#Execute(0, "\%s", "\%s", %s)<Bar>echoerr ingo#err#Get()<Bar>endif<CR>', g:SearchRepeat_MappingPrefix, a:suffixToReactivateNext, a:mappingNext, a:mappingPrev, a:howToHandleCountAndOptions)
+    execute printf('nnoremap <silent> %s%s :<C-u>if ! SearchRepeat#Execute(1, "\%s", "\%s", %s)<Bar>echoerr ingo#err#Get()<Bar>endif<CR>', g:SearchRepeat_MappingPrefix, a:suffixToReactivatePrev, a:mappingNext, a:mappingPrev, a:howToHandleCountAndOptions)
 endfunction
 
 

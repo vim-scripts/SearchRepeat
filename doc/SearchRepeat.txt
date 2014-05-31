@@ -30,6 +30,10 @@ Activation of a custom search makes that search the new type of search to be
 repeated, until the search type is changed again. The default search is
 included in that via the `/` and |?| commands, too.
 
+It can also make |n| always move forward and |N| always move backward (for
+both built-in and custom searches), regardless of the current search
+direction.
+
 SEE ALSO								     *
 
 - The |SearchSpecial.vim| (vimscript #4948) plugin provides generic functions
@@ -63,8 +67,8 @@ from a mapping), and then append the |zz| command: >
 <
 Then, integrate these into SearchRepeat, using gnzz and gnzZ to activate them: >
     call SearchRepeat#Define(
-    \   "\<Plug>(SearchAtCenterOfWindowNext)", '', 'zz', '/win-center/', 'Search forward,  position at center of window', '',
-    \   "\<Plug>(SearchAtCenterOfWindowPrev)", '', 'zZ', '?win-center?', 'Search backward, position at center of window', '',
+    \   '<Plug>(SearchAtCenterOfWindowNext)', '', 'zz', '/win-center/', 'Search forward,  position at center of window', '',
+    \   '<Plug>(SearchAtCenterOfWindowPrev)', '', 'zZ', '?win-center?', 'Search backward, position at center of window', '',
     \   2
     \)
 <
@@ -100,8 +104,19 @@ DEPENDENCIES					   *SearchRepeat-dependencies*
 
 ==============================================================================
 CONFIGURATION					  *SearchRepeat-configuration*
-							  *SearchRepeat-remap*
+
 For a permanent configuration, put the following commands into your |vimrc|:
+
+					*g:SearchRepeat_IsAlwaysForwardWith_n*
+By default, when a backwards search (e.g. ?foo?) is configured, the |n|
+command jumps backwards, too, so the search direction affects the behavior of
+|n| / |N|. Some prefer to have |n| / |N| behave consistently, regardless of
+the current search direction, i.e. have |n| always move forward and |N| always
+move backward. This can be achieved for both built-in and custom searches by
+setting: >
+    let g:SearchRepeat_IsAlwaysForwardWith_n = 1
+<
+							  *SearchRepeat-remap*
 						*g:SearchRepeat_MappingPrefix*
 To change the default mapping prefix, use: >
     let g:SearchRepeat_MappingPrefix = 'gn'
@@ -117,8 +132,10 @@ To set the current search type (in a custom search mapping): >
     :call SearchRepeat#Set("\<Plug>MyCustomSearchMapping", "\<Plug>MyCustomOppositeSearchMapping", n)
 <
 To set the current search type (in a custom search mapping) and execute the
-(first, not the opposite) search mapping: >
-    :call SearchRepeat#Execute("\<Plug>MyCustomSearchMapping", "\<Plug>MyCustomOppositeSearchMapping", n)
+(first with 0, opposite with 1 as first argument) search mapping: >
+    if ! SearchRepeat#Execute(0, "\<Plug>MyCustomSearchMapping", "\<Plug>MyCustomOppositeSearchMapping", n)
+	echoerr ingo#err#Get()
+    endif
 <
 The third argument n specifies how the mappings deal with an optional [count]
 that is passed to the 'n' / 'N' commands:
@@ -158,6 +175,15 @@ IDEAS							  *SearchRepeat-ideas*
 
 ==============================================================================
 HISTORY							*SearchRepeat-history*
+
+1.10	31-May-2014
+- CHG: Add isOpposite flag to SearchRepeat#Execute() and remove the swapping
+  of a:mappingNext and a:mappingPrev in the opposite mapping definition.
+- ENH: Add g:SearchRepeat_IsAlwaysForwardWith_n configuration to consistently
+  always move forward / backward with n / N, regardless of whether the current
+  search mode goes into the opposite direction.
+- FIX: SearchRepeat#Execute() needs to return status of SearchRepeat#Repeat()
+  to have clients :echoerr any error.
 
 1.00	26-May-2014
 First published version.

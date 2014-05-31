@@ -10,6 +10,12 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   1.10.022	27-May-2014	ENH: Add g:SearchRepeat_IsAlwaysForwardWith_n
+"				configuration to consistently always move
+"				forward / backward with n / N, regardless of
+"				whether the current search mode goes into the
+"				opposite direction.
+"				Move s:RepeatSearch() to autoload script.
 "   1.00.021	24-May-2014	Introduce g:SearchRepeat_MappingPrefix to allow
 "				customization of all repeat mappings.
 "				Adapt <Plug>-mapping naming.
@@ -87,6 +93,9 @@ let g:loaded_SearchRepeat = 1
 if ! exists('g:SearchRepeat_MappingPrefix')
     let g:SearchRepeat_MappingPrefix = 'gn'
 endif
+if ! exists('g:SearchRepeat_IsAlwaysForwardWith_n')
+    let g:SearchRepeat_IsAlwaysForwardWith_n = 0
+endif
 
 
 "- mappings --------------------------------------------------------------------
@@ -94,22 +103,8 @@ endif
 " Note: The mappings cannot be executed with ':normal!', so that the <Plug>
 " mappings apply. The [nN] commands must be executed without remapping, or we
 " end up in endless recursion. Thus, define noremapping mappings for [nN].
-" Note: When typed, [*#nN] open the fold at the search result, but inside a mapping or
-" :normal this must be done explicitly via 'zv'.
-" The tricky thing here is that folds must only be opened when the jump
-" succeeded. The 'n' command doesn't abort the mapping chain, so we have to
-" explicitly check for a successful jump in a custom function.
-function! s:RepeatSearch( cmd )
-    let l:save_errmsg = v:errmsg
-    let v:errmsg = ''
-    execute 'normal!' (v:count ? v:count : '') . a:cmd
-    if empty(v:errmsg)
-	let v:errmsg = l:save_errmsg
-	normal! zv
-    endif
-endfunction
-nnoremap <silent> <Plug>(SearchRepeat_n) :<C-u>call <SID>RepeatSearch('n')<CR>
-nnoremap <silent> <Plug>(SearchRepeat_N) :<C-u>call <SID>RepeatSearch('N')<CR>
+nnoremap <silent> <Plug>(SearchRepeat_n) :<C-u>call SearchRepeat#RepeatSearch(0)<CR>
+nnoremap <silent> <Plug>(SearchRepeat_N) :<C-u>call SearchRepeat#RepeatSearch(1)<CR>
 
 " During repetition, 'hlsearch' must be explicitly turned on, but without
 " echoing of the command. This is the <silent> mapping that does this inside
